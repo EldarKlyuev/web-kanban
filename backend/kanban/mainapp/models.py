@@ -44,3 +44,21 @@ class User(models.Model):
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
     
+
+class Task(models.Model):
+    body = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_created=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    STATUS_CHOICES = [
+        ('Month plan', 'Month plan'),
+        ('In work', 'In work'),
+        ('In test', 'In test'),
+        ('Done', 'Done'),
+    ]
+
+    status = models.CharField(max_length=255, choices=STATUS_CHOICES)
+
+    def __str__(self):
+        return self.body[0:50]
+    
