@@ -194,3 +194,21 @@ class UserCompliteSignUpSerializer(serializers.Serializer):
             raise ValidationError(errors)
         
         return data
+
+
+class TaskCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = "__all__"
+
+
+    def create(self, validated_data):
+        return Task.objects.create(**validated_data)
+    
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get("title", instance.title)
+        instance.body = validated_data.get("body", instance.body)
+        instance.workers = validated_data.get("workers", instance.workers)
+        instance.status = validated_data.get("status", instance.status)
+        instance.save()
+        return instance

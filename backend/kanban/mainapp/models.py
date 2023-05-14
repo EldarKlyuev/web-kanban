@@ -33,15 +33,6 @@ class User(models.Model):
     is_enable = models.BooleanField(default=False)
     is_verify = models.BooleanField(default=False)
 
-    # token_verify = models.CharField(max_length=255, unique=True, null=True)
-    # token_verify_created_at = models.DateTimeField(auto_now_add=True, null=True)
-
-    # token_reset = models.CharField(max_length=255, unique=True, null=True)
-    # token_reset_created_at = models.DateTimeField(null=True)
-
-    # token_complite_signup = models.CharField(max_length=255, unique=True, null=True)
-    # token_complite_signup_created_at = models.DateTimeField(null=True)
-
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
     
@@ -70,7 +61,8 @@ class TokensCompliteSignUp(models.Model):
 class Task(models.Model):
     title = models.CharField(max_length=50, blank=False)
     body = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_created=True)
+    workers = models.CharField(null=True, max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     STATUS_CHOICES = [
@@ -83,5 +75,5 @@ class Task(models.Model):
     status = models.CharField(max_length=255, choices=STATUS_CHOICES)
 
     def __str__(self):
-        return self.body[0:50]
+        return self.title
     

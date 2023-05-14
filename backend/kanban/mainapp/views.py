@@ -284,4 +284,57 @@ class UserPostView(APIView):
         return Response({"done": "User deleted"})
 
 
+class TaskCreateView(APIView):
+    def post(self, request):
+        serializer = TaskCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=200)
+    
+    
+class TaskGPDView(APIView):
+    def delete(self, request, **kwargs):
+        pk = kwargs.get("pk", None)
+        if not pk:
+            return Response({"error": "This ID does not exist"}, status=400)
+        
+        try:
+            task_id = Task.objects.get(pk=pk)
+        except:
+            return Response({"error": "Task not found"}, status=400)
+        
+        task_id.delete()
+        return Response({"done": "User deleted"}, status=200)
+    
+    def put(self, request, *args, **kwargs):
+        pk = kwargs.get("pk", None)
+        if not pk:
+            return Response({"error": "Method PUT not allowed"}, status=405)
+        
+        try:
+            instance = Task.objects.get(pk=pk)
+        except:
+            return Response({"error": "Task does not exist"}, status=400)
+        
+        serializer = TaskCreateSerializer(data=request.data, instance=instance)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({"put": serializer.data}, status=200)
+    
+    def get(self, request, **kwargs):
+        pk = kwargs.get("pk", None)
+        if not pk:
+            return Response({"error": "This ID does not exist"}, status=400)
+        
+        try:
+            task_id = Task.objects.get(pk=pk)
+        except:
+            return Response({"error": "User not found"}, status=404)
+        
+        return Response(UserSerializers(task_id).data)
+
+
+
 
