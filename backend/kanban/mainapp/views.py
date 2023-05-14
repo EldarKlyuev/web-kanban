@@ -33,15 +33,17 @@ class UserCompliteSignUpView(APIView):
             return Response({"error": "Invalid token"}, status=400)
         
         try:
-            user = User.objects.get(token_complite_signup=token)
-        except:
-            return Response({"error": "User not found"}, status=400)
+            token_complite = TokensCompliteSignUp.objects.get(token_complite_signup=token)
+        except TokensCompliteSignUp.DoesNotExist:
+            return Response({"error": "Token not found"}, status=400)
         
+        user = token_complite.user
+
         if user.is_verify == True:
             return Response({"error": "User is already verify"}, status=400)
         
         date1 = datetime.datetime.now()
-        date2 = user.token_complite_signup_created_at
+        date2 = token_complite.token_complite_signup_created_at
         date1_utc = date1.astimezone(datetime.timezone.utc)
         date2_utc = date2.astimezone(datetime.timezone.utc)
         diff = date1_utc - date2_utc
@@ -51,8 +53,7 @@ class UserCompliteSignUpView(APIView):
         
         user.password = password
         user.is_verify = True
-        user.token_complite_signup = None
-        user.token_complite_signup_created_at = None
+        token_complite.delete()
         user.save()
         user.refresh_from_db()
         
@@ -72,12 +73,13 @@ class UserForgotPasswordView(APIView):
             return Response({"error": "Invalid token"}, status=400)
         
         try:
-            user = User.objects.get(token_reset=token_reset)
-        except:
-            return Response({"error": "User not found"}, status=400)
+            token = TokensReset.objects.get(token_reset=token_reset)
+        except TokensReset.DoesNotExist:
+            return Response({"error": "Token not found"}, status=400)
         
+        user = token.user
         date1 = datetime.datetime.now()
-        date2 = user.token_reset_created_at
+        date2 = token.token_reset_created_at
         date1_utc = date1.astimezone(datetime.timezone.utc)
         date2_utc = date2.astimezone(datetime.timezone.utc)
         diff = date1_utc - date2_utc
@@ -96,6 +98,7 @@ class UserForgotPasswordView(APIView):
         
         user.password = password
         user.save()
+        token.delete()
         user.refresh_from_db()
         
         return Response(status=200)
@@ -116,11 +119,10 @@ class UserResetPasswordView(APIView):
         except:
             return Response({"error": "User not found"}, status=400)
         
-        user.token_reset = uuid.uuid4()
-        user.token_reset_created_at = datetime.datetime.now()
-        user.save()
+        TokensReset.objects.create(user=user)
+        token_reset = TokensReset.objects.get(user=user)
         
-        url = f"/{user.token_reset}/resetpassword"
+        url = f"/{token_reset.token_reset}/resetpassword"
 
         return Response({"done": url}, status=200)
     
@@ -132,14 +134,20 @@ class UsersApiView(APIView):
         users = User.objects.all()
         return Response(UserAllViewSerializer(users, many=True).data, status=200)
     
+    """Для complite signup когда создает юзер"""
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        token = serializer.data["token_complite_signup"]
+        user_id = serializer.data['id']
+        user = User.objects.get(pk=user_id)
+        TokensCompliteSignUp.objects.create(user=user)
+        token_complite = TokensCompliteSignUp.objects.get(user=user_id)
+        
+        url = f'{token_complite.token_complite_signup}'
+        print(url)
 
-        url = f"/users/{token}/complitesignup"
 
         return Response({"ok": url}, status=200)
 
@@ -184,36 +192,34 @@ class UserVerifyEmailView(APIView):
             return Response({"error": "Invalid token"}, status=400)
         
         if not token_verify:
-            Response({"error": "Token not found"}, status=400)
+            return Response({"error": "Token not found"}, status=400)
+
         try:
-            user = User.objects.get(token_verify=token_verify)
-        except:
-            Response({"error": "User not found"}, status=400)
-        
-        if user.is_verify == True:
-            return Response({"error": "User is already verify"}, status=400)
-        
-        date1 = datetime.datetime.now()
-        date2 = user.token_verify_created_at
-        date1_utc = date1.astimezone(datetime.timezone.utc)
-        date2_utc = date2.astimezone(datetime.timezone.utc)
-        diff = date1_utc - date2_utc
-        print(diff)
-        time_obj = datetime.datetime.strptime(str(diff), '%H:%M:%S.%f').time()
-        hours = time_obj.strftime('%H')
+            token_verify = TokensVerify.objects.get(token_verify=token_verify)
+        except TokensVerify.DoesNotExist:
+            return Response({"error": "Token not found"}, status=400)
 
-        if int(hours) > 2:
-            return Response({"error": "time's up"}, status=400)
+        # if user.is_verify == True:
+        #     return Response({"error": "User is already verify"}, status=400)
         
-        """Для теста auth"""
+        # date1 = datetime.datetime.now()
+        # date2 = user.token_verify_created_at
+        # date1_utc = date1.astimezone(datetime.timezone.utc)
+        # date2_utc = date2.astimezone(datetime.timezone.utc)
+        # diff = date1_utc - date2_utc
+        # print(diff)
+        # time_obj = datetime.datetime.strptime(str(diff), '%H:%M:%S.%f').time()
+        # hours = time_obj.strftime('%H')
+
+        # if int(hours) > 2:
+        #     return Response({"error": "time's up"}, status=400)
+        user = token_verify.user
         user.is_enable=True
-
         user.is_verify=True
-        user.token_verify = None
-        user.token_verify_created_at = None
         user.save()
+        token_verify.delete()
         user.refresh_from_db()
-        return Response(UserSerializers(user).data)
+        return Response(status=200)
 
 
 class UserSignUpView(APIView):
@@ -222,9 +228,12 @@ class UserSignUpView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        verify_uuid = serializer.data["token_verify"]
-
-        url = f"/{verify_uuid}/verify"
+        user_id = serializer.data['id']
+        user = User.objects.get(pk=user_id)
+        TokensVerify.objects.create(user=user)
+        token_verify = TokensVerify.objects.get(user=user_id)
+        
+        url = f'{token_verify.token_verify}'
         print(url)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)

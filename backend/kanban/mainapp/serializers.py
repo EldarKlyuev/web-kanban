@@ -3,7 +3,7 @@ import string
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 from django.contrib.auth.hashers import make_password
-from mainapp.models import User
+from mainapp.models import *
 from mainapp.hasher import hash_fun
 
 
@@ -60,8 +60,6 @@ class UserSerializers(serializers.ModelSerializer):
 
         """Своя функция хэширования"""
         validated_data['password'] = hash_fun(validated_data['password'])
-
-        validated_data["token_verify"] = uuid.uuid4()
         
         return User.objects.create(**validated_data)
     
@@ -168,8 +166,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        validated_data["token_complite_signup"] = uuid.uuid4()
-        validated_data["token_complite_signup_created_at"] = datetime.datetime.now()
+        # validated_data["token_complite_signup"] = uuid.uuid4()
+        # validated_data["token_complite_signup_created_at"] = datetime.datetime.now()
         return User.objects.create(**validated_data)
 
 
