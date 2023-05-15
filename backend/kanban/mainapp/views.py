@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from mainapp.serializers import *
 from mainapp.models import *
 from mainapp.hasher import hash_fun
+from mainapp.mailsender import send_email
 # from mainapp.permissions import IsAdminUser
 
 
@@ -18,19 +19,20 @@ def is_valid_uuid(uuid_to_valid, version=4):
 
 
 class UserCompliteSignUpView(APIView):
-    def post(self, request):
+    def post(self, request, **kwargs):
         serializer = UserCompliteSignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        token = serializer.data["token"]
         password = hash_fun(serializer.data["password"])
         password_repeat = hash_fun(serializer.data["password_repeat"])
 
+        token = kwargs.get("token_complite_signup", None)
+
         if not is_valid_uuid(token):
             return Response({"error": "Invalid token"}, status=400)
-
+        
         if not token:
-            return Response({"error": "Invalid token"}, status=400)
+            return Response({"error": "Token not found"}, status=400)
         
         try:
             token_complite = TokensCompliteSignUp.objects.get(token_complite_signup=token)
@@ -47,6 +49,7 @@ class UserCompliteSignUpView(APIView):
         date1_utc = date1.astimezone(datetime.timezone.utc)
         date2_utc = date2.astimezone(datetime.timezone.utc)
         diff = date1_utc - date2_utc
+        print(diff)
         
         if not password == password_repeat:
             return Response({"error": "Passwords don't match"}, status=400)
@@ -61,44 +64,40 @@ class UserCompliteSignUpView(APIView):
     
 
 class UserForgotPasswordView(APIView):
-    def post(self, request):
+    def post(self, request, **kwargs):
         serializer = UserForgotPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token_reset = serializer.data["token"]
         password = hash_fun(serializer.data["password"])
         password_repeat = hash_fun(serializer.data["password_repeat"])
 
-        if not token_reset:
-            return Response({"error": "Invalid token"}, status=400)
+        token = kwargs.get("token_reset", None)
+
+        # if not is_valid_uuid(token):
+        #     return Response({"error": "Invalid token"}, status=400)
+        
+        if not token:
+            return Response({"error": "Token not found"}, status=400)
         
         try:
-            token = TokensReset.objects.get(token_reset=token_reset)
+            token_reset = TokensReset.objects.get(token_reset=token)
         except TokensReset.DoesNotExist:
             return Response({"error": "Token not found"}, status=400)
         
-        user = token.user
+        user = token_reset.user
         date1 = datetime.datetime.now()
-        date2 = token.token_reset_created_at
+        date2 = token_reset.token_reset_created_at
         date1_utc = date1.astimezone(datetime.timezone.utc)
         date2_utc = date2.astimezone(datetime.timezone.utc)
         diff = date1_utc - date2_utc
         print(diff)
-        # -1 day, 21:35:12.976821 А должно было быть 2 часа
-
-
-        # time_obj = datetime.datetime.strptime(str(diff), '%H:%M:%S.%f').time()
-        # hours = diff.strftime('%H')
-
-        # if int(hours) > 2:
-        #     return Response({"error": "time's up"}, status=400)
         
         if not password == password_repeat:
             return Response({"error": "Passwords don't match"}, status=400)
         
         user.password = password
         user.save()
-        token.delete()
+        token_reset.delete()
         user.refresh_from_db()
         
         return Response(status=200)
@@ -122,7 +121,7 @@ class UserResetPasswordView(APIView):
         TokensReset.objects.create(user=user)
         token_reset = TokensReset.objects.get(user=user)
         
-        url = f"/{token_reset.token_reset}/resetpassword"
+        url = f"http://127.0.0.1:8000/api/v1/user/{token_reset.token_reset}/forgotpassword/"
 
         return Response({"done": url}, status=200)
     
@@ -145,7 +144,7 @@ class UsersApiView(APIView):
         TokensCompliteSignUp.objects.create(user=user)
         token_complite = TokensCompliteSignUp.objects.get(user=user_id)
         
-        url = f'{token_complite.token_complite_signup}'
+        url = f'http://127.0.0.1:8000/api/v1/users/{token_complite.token_complite_signup}/complitesingup/'
         print(url)
 
 
@@ -233,10 +232,12 @@ class UserSignUpView(APIView):
         TokensVerify.objects.create(user=user)
         token_verify = TokensVerify.objects.get(user=user_id)
         
-        url = f'{token_verify.token_verify}'
+        to_send = serializer.data['email']
+        url = f'http://127.0.0.1:8000/api/v1/user/{token_verify.token_verify}/verify/'
         print(url)
+        send_email(to_send=to_send, url=url)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_201_CREATED)
 
 
 class UserPostView(APIView):
