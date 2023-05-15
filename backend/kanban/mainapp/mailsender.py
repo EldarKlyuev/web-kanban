@@ -1,20 +1,47 @@
-import smtplib
-import os
+from django.core.mail import send_mail
+from kanban.settings import EMAIL_HOST_USER
 
-def send_email(to_send, url):
-    sender = os.getenv("EMAIL_HOST_USER")
-    password = os.getenv("EMAIL_HOST_PASSWORD")
-
-    message = f"{url}"
-
-    server = smtplib.SMTP("smtp.mail.ru", 2525)
-
-    server.starttls()
+def send_for_verify(to_send, url):
+    message = f"Please verify your account!\n\n{url}"
+    recipient_list = [ to_send, ]
 
     try:
-        server.login(sender, password)
-        server.sendmail(sender, to_send, message)
+        send_mail(
+                'Subject',
+                message=message,
+                from_email=EMAIL_HOST_USER,
+                recipient_list=recipient_list,
+                fail_silently=False,
+            )
+    except Exception as ex:
+        return print(ex)
 
-        return print("The message sent")
-    except Exception as _ex:
-        return print(f"{_ex}\nCheck login")
+def send_to_reset_password(to_send, url):
+    message = f"Please reset your password for your account!\n\n{url}"
+    recipient_list = [ to_send, ]
+
+    try:
+        send_mail(
+                'Subject',
+                message=message,
+                from_email=EMAIL_HOST_USER,
+                recipient_list=recipient_list,
+                fail_silently=False,
+            )
+    except Exception as ex:
+        return print(ex)
+
+def send_to_complite_signup(to_send, url):
+    message = f"Your accont has been created!\nPlease complite your sign up!\n\n{url}"
+    recipient_list = [ to_send, ]
+
+    try:
+        send_mail(
+                'Subject',
+                message=message,
+                from_email=EMAIL_HOST_USER,
+                recipient_list=recipient_list,
+                fail_silently=False,
+            )
+    except Exception as ex:
+        return print(ex)

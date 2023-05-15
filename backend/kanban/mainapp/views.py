@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from mainapp.serializers import *
 from mainapp.models import *
 from mainapp.hasher import hash_fun
-from mainapp.mailsender import send_email
+from mainapp.mailsender import *
 # from mainapp.permissions import IsAdminUser
 
 
@@ -123,6 +123,8 @@ class UserResetPasswordView(APIView):
         
         url = f"http://127.0.0.1:8000/api/v1/user/{token_reset.token_reset}/forgotpassword/"
 
+        send_to_reset_password(to_send=email, url=url)
+
         return Response({"done": url}, status=200)
     
 
@@ -147,6 +149,7 @@ class UsersApiView(APIView):
         url = f'http://127.0.0.1:8000/api/v1/users/{token_complite.token_complite_signup}/complitesingup/'
         print(url)
 
+        send_to_complite_signup(to_send=serializer.data['email'], url=url)
 
         return Response({"ok": url}, status=200)
 
@@ -235,7 +238,7 @@ class UserSignUpView(APIView):
         to_send = serializer.data['email']
         url = f'http://127.0.0.1:8000/api/v1/user/{token_verify.token_verify}/verify/'
         print(url)
-        send_email(to_send=to_send, url=url)
+        send_for_verify(to_send=to_send, url=url)
 
         return Response(status=status.HTTP_201_CREATED)
 
