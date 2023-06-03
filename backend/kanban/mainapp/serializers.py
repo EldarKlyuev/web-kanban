@@ -210,3 +210,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get("status", instance.status)
         instance.save()
         return instance
+
+
+class UserAuthRefreshToken(serializers.Serializer):
+    token = serializers.CharField()

@@ -7,7 +7,7 @@ from mainapp.serializers import *
 from mainapp.models import *
 from mainapp.hasher import hash_fun
 from mainapp.mailsender import *
-# from mainapp.permissions import IsAdminUser
+from .permissions import *
 
 
 def is_valid_uuid(uuid_to_valid, version=4):
@@ -73,9 +73,6 @@ class UserForgotPasswordView(APIView):
 
         token = kwargs.get("token_reset", None)
 
-        # if not is_valid_uuid(token):
-        #     return Response({"error": "Invalid token"}, status=400)
-        
         if not token:
             return Response({"error": "Token not found"}, status=400)
         
@@ -129,13 +126,12 @@ class UserResetPasswordView(APIView):
     
 
 class UsersApiView(APIView):
-    # permission_classes = [IsAdminUser,]
+    permission_classes = [IsAdminUser,]
 
     def get(self, request):
         users = User.objects.all()
         return Response(UserAllViewSerializer(users, many=True).data, status=200)
     
-    """Для complite signup когда создает юзер"""
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -179,11 +175,25 @@ class UserAuthView(APIView):
         if not user.is_enable == True:
             return Response({"Error": "User is not enable"}, status=400)
         
-        token = uuid.uuid4()
-        # session = Sessions.objects.create(user_id=user, token=token)
+        return Response(user.token, status=200)
 
-        # return Response({"session": session.token}, status=200)
-        return Response(status=200)
+
+class UserAuthRefreshTokenView(APIView):
+    def post(self, request):
+        serializers = UserAuthRefreshToken(data=request.data)
+        serializers.is_valid(raise_exception=True)
+
+        token = serializers["token"]
+
+        try:
+            payload = jwt.decode(token.value, settings.SECRET_KEY, algorithms=['HS256'])
+            user_email = payload.get('email')
+            user = User.objects.get(email=user_email)
+        except Exception as ex:
+            print(ex)
+            return Response({"error": "Token not found"}, status=400)
+        
+        return Response(user.token, status=200)
 
 
 class UserVerifyEmailView(APIView):
@@ -201,20 +211,6 @@ class UserVerifyEmailView(APIView):
         except TokensVerify.DoesNotExist:
             return Response({"error": "Token not found"}, status=400)
 
-        # if user.is_verify == True:
-        #     return Response({"error": "User is already verify"}, status=400)
-        
-        # date1 = datetime.datetime.now()
-        # date2 = user.token_verify_created_at
-        # date1_utc = date1.astimezone(datetime.timezone.utc)
-        # date2_utc = date2.astimezone(datetime.timezone.utc)
-        # diff = date1_utc - date2_utc
-        # print(diff)
-        # time_obj = datetime.datetime.strptime(str(diff), '%H:%M:%S.%f').time()
-        # hours = time_obj.strftime('%H')
-
-        # if int(hours) > 2:
-        #     return Response({"error": "time's up"}, status=400)
         user = token_verify.user
         user.is_enable=True
         user.is_verify=True

@@ -1,7 +1,11 @@
-from django.db import models
 import uuid
+from django.db import models
+import jwt
+from datetime import datetime, timedelta
+from django.conf import settings
+from kanban.settings import *
 
-class User(models.Model): 
+class User(models.Model):
 
     email = models.EmailField(max_length=255, blank=False, unique=True)
     password = models.CharField(max_length=255, blank=False)
@@ -21,8 +25,7 @@ class User(models.Model):
 
     ROLE_CHOICES = [
         ('Admin', 'Admin'),
-        ('Company', 'Company'),
-        ('Worker', 'Worker'),
+        ('User', 'User'),
     ]
 
     role_sys = models.CharField(max_length=20,
@@ -33,6 +36,56 @@ class User(models.Model):
     is_enable = models.BooleanField(default=False)
     is_verify = models.BooleanField(default=False)
 
+
+    @property
+    def token(self):
+        """
+        Generates access token and refresh token for the user
+        """
+        token_payload = {
+            'id': self.id,
+            'email': self.email,
+            'exp': datetime.utcnow() + ACCESS_TOKEN_LIFETIME,
+            'iat': datetime.utcnow(),
+        }
+        access_token = jwt.encode(
+            token_payload, settings.SECRET_KEY, algorithm='HS256')
+        token_payload = {
+            'id': self.id,
+            'email': self.email,
+            'exp': datetime.utcnow() + REFRESH_TOKEN_LIFETIME,
+            'iat': datetime.utcnow(),
+        }
+        refresh_token = jwt.encode(
+            token_payload, settings.SECRET_KEY, algorithm='HS256')
+        return {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+        }
+
+    def refresh_tokens(self):
+        """
+        Updates the access token and refresh token for the user
+        """
+        token_payload = {
+            'id': self.id,
+            'email': self.email,
+            'exp': datetime.utcnow() + ACCESS_TOKEN_LIFETIME,
+            'iat': datetime.utcnow(),
+        }
+        self.access_token = jwt.encode(
+            token_payload, settings.SECRET_KEY, algorithm=ALGORITHM_JWT)
+        token_payload = {
+            'id': self.id,
+            'email': self.email,
+            'exp': datetime.utcnow() + REFRESH_TOKEN_LIFETIME,
+            'iat': datetime.utcnow(),
+        }
+        self.refresh_token = jwt.encode(
+            token_payload, settings.SECRET_KEY, algorithm=ALGORITHM_JWT)
+        self.save()
+        
+    
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
     
